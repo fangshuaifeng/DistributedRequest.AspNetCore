@@ -1,10 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-	<TargetFramework>netcoreapp3.1</TargetFramework>
-	<LangVersion>latest</LangVersion>
-	<Nullable>Disable</Nullable>
-	<GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>Disable</Nullable>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <Version>1.0.1</Version>
+    <Authors>fangshuaifeng</Authors>
+    <Company>renzicu</Company>
+    <PackageProjectUrl>https://github.com/fangshuaifeng/DistributedRequest.AspNetCore</PackageProjectUrl>
+    <Description>分布式请求调用框架，包含分片信息</Description>
   </PropertyGroup>
 
   <ItemGroup>
