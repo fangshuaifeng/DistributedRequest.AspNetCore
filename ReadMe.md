@@ -29,8 +29,8 @@ public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IHostApp
 ```csharp
 using System.Threading;
 using System.Threading.Tasks;
-using Zlw.Common.DistributedRequest.Interfaces;
-using Zlw.Common.DistributedRequest.Models;
+using DistributedRequest.AspNetCore.Interfaces;
+using DistributedRequest.AspNetCore.Models;
 
 public class DemoJobHandler : IJobBaseHandler
 {
@@ -70,7 +70,7 @@ POST https://localhost:14111/dr-server
 
 #### 程序内调用示例
 ```csharp
-using Zlw.Common.DistributedRequest.Models;
+using DistributedRequest.AspNetCore.Models;
 
 public class DemoController
 {
