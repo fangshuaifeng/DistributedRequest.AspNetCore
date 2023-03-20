@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
+﻿using DistributedRequest.AspNetCore.Models;
 using System.Threading;
-using DistributedRequest.AspNetCore.Models;
+using System.Threading.Tasks;
 
 namespace DistributedRequest.AspNetCore.Interfaces
 {

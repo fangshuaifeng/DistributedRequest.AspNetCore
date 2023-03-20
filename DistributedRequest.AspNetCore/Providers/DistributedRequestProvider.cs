@@ -95,12 +95,7 @@ namespace DistributedRequest.AspNetCore.Providers
 
         #endregion
 
-        /// <summary>
-        /// PostJsonAsync
-        /// </summary>
-        /// <typeparam name="TReponse"></typeparam>
-        /// <returns></returns>
-        public async Task<List<ReturnT>> PostJsonAsync(RequestContext param, CancellationToken cancellationToken = default, bool onlyLocal = false)
+        private async Task<List<TReponse>> InnerPostJsonAsync<TReponse>(RequestContext param, CancellationToken cancellationToken = default, bool onlyLocal = false)
         {
             var token = GetCurrentToken();
             var ips = new List<string>();
@@ -119,17 +114,35 @@ namespace DistributedRequest.AspNetCore.Providers
                 // 随机取
                 ips = ips.OrderBy(o => Guid.NewGuid()).Take(param._MaxCount.Value).ToList();
             }
-            if (ips.Count == 0) return new List<ReturnT>();
+            if (ips.Count == 0) return new List<TReponse>();
 
             var count = ips.Count;
             var strParams = param == null ? string.Empty : JsonConvert.SerializeObject(param);
-            var tasks = ips.Select((server_address, idx) => SendAsync<ReturnT>($"{server_address}/{_option.BasePath}-client"
+            var tasks = ips.Select((server_address, idx) => SendAsync<TReponse>($"{server_address}/{_option.BasePath}-client"
                 , new JobContext(strParams, new BroadCastModel(idx, count))
                 , cancellationToken
                 , e => { e.Authorization = token; }));
 
             var reponses = await Task.WhenAll(tasks);
             return reponses.ToList();
+        }
+
+        /// <summary>
+        /// PostJsonAsync
+        /// </summary>
+        /// <returns></returns>
+        public Task<List<ReturnT>> PostJsonAsync(RequestContext param, CancellationToken cancellationToken = default, bool onlyLocal = false)
+        {
+            return InnerPostJsonAsync<ReturnT>(param, cancellationToken, onlyLocal);
+        }
+
+        /// <summary>
+        /// PostJsonAsync
+        /// </summary>
+        /// <returns></returns>
+        public Task<List<ReturnT<T>>> PostJsonAsync<T>(RequestContext param, CancellationToken cancellationToken = default, bool onlyLocal = false)
+        {
+            return InnerPostJsonAsync<ReturnT<T>>(param, cancellationToken, onlyLocal);
         }
     }
 }
