@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace DistributedRequest.AspNetCore.Models
+﻿namespace DistributedRequest.AspNetCore.Models
 {
     public class DistributedRequestOption
     {
@@ -15,8 +11,8 @@ namespace DistributedRequest.AspNetCore.Models
         /// </summary>
         public string ServiceName { get; set; }
         /// <summary>
-        /// 路由地址，默认 = dr
+        /// 路由地址，默认 = dr-client
         /// </summary>
-        public string BasePath { get; set; } = "dr";
+        public string BasePath { get; set; } = "dr-client";
     }
 }

@@ -32,13 +32,13 @@ using System.Threading.Tasks;
 using DistributedRequest.AspNetCore.Interfaces;
 using DistributedRequest.AspNetCore.Models;
 
-public class DemoJobHandler : IJobBaseHandler
+public class DemoJobHandler : IJobRequestHandler<TRequest,TResponse>
 {
     public DemoJobHandler()
     {
     }
 
-    public Task<ReturnT> Execute(JobContext context, CancellationToken cancellationToken)
+    public Task<TResponse> Execute(TRequest request, BroadCastModel broadCast, CancellationToken cancellationToken)
     {
         throw new System.Exception();
     }
@@ -46,27 +46,6 @@ public class DemoJobHandler : IJobBaseHandler
 ```
 
 ---
-#### 本机调试示例
-```postman
-POST https://localhost:14111/dr-client
-{
-    "Parameter": "{\"ExecutorHandler\":\"DemoJobHandler\",\"ExecutorParams\":\"\"}",
-    "BroadCast": {
-        "Index": 0,
-        "Total": 1
-    }
-}
-```
-
-#### 分布式调试示例
-```postman
-POST https://localhost:14111/dr-server
-{
-    "executorHandler": "DemoJobHandler",
-    "executorParams": "",
-    "maxCount": "3"
-}
-```
 
 #### 程序内调用示例
 ```csharp
@@ -80,7 +59,7 @@ public class DemoController
     }
 
     public async void Test(){
-        var rst = await _distributedRequest.PostJsonAsync(new RequestContext(nameof(DemoJobHandler)));
+        var rst = await _distributedRequest.PostJsonAsync(new RequestContext()));
     }
 }
 ```

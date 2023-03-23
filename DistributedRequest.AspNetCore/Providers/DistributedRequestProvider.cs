@@ -95,7 +95,7 @@ namespace DistributedRequest.AspNetCore.Providers
 
         #endregion
 
-        private async Task<List<TReponse>> InnerPostJsonAsync<TReponse>(RequestContext param, CancellationToken cancellationToken = default, bool onlyLocal = false)
+        public async Task<List<TResopnse>> PostJsonAsync<TResopnse>(IJobRequest<TResopnse> request, CancellationToken cancellationToken = default, int? partitionCount = null, bool onlyLocal = false) where TResopnse : class
         {
             var token = GetCurrentToken();
             var ips = new List<string>();
@@ -109,40 +109,28 @@ namespace DistributedRequest.AspNetCore.Providers
                 ips.Add(localAddress);
             }
 
-            if (param._MaxCount.HasValue && param._MaxCount < ips.Count && param._MaxCount > 0)
+            if (partitionCount.HasValue && partitionCount < ips.Count && partitionCount > 0)
             {
                 // 随机取
-                ips = ips.OrderBy(o => Guid.NewGuid()).Take(param._MaxCount.Value).ToList();
+                ips = ips.OrderBy(o => Guid.NewGuid()).Take(partitionCount.Value).ToList();
             }
-            if (ips.Count == 0) return new List<TReponse>();
+            if (ips.Count == 0) return new List<TResopnse>();
 
             var count = ips.Count;
-            var strParams = param == null ? string.Empty : JsonConvert.SerializeObject(param);
-            var tasks = ips.Select((server_address, idx) => SendAsync<TReponse>($"{server_address}/{_option.BasePath}-client"
-                , new JobContext(strParams, new BroadCastModel(idx, count))
-                , cancellationToken
-                , e => { e.Authorization = token; }));
+            var strParams = request == null ? string.Empty : JsonConvert.SerializeObject(request);
+            var tasks = ips.Select((server_address, idx) => SendAsync<TResopnse>($"{server_address}/{_option.BasePath}"
+                                                                                , new InnerContext
+                                                                                {
+                                                                                    Parameter = strParams,
+                                                                                    BroadCast = new BroadCastModel(idx, count),
+                                                                                    TRequest = request.GetType().FullName,
+                                                                                    TResponse = typeof(TResopnse).FullName
+                                                                                }
+                                                                                , cancellationToken
+                                                                                , e => { e.Authorization = token; }));
 
             var reponses = await Task.WhenAll(tasks);
             return reponses.ToList();
-        }
-
-        /// <summary>
-        /// PostJsonAsync
-        /// </summary>
-        /// <returns></returns>
-        public Task<List<ReturnT>> PostJsonAsync(RequestContext param, CancellationToken cancellationToken = default, bool onlyLocal = false)
-        {
-            return InnerPostJsonAsync<ReturnT>(param, cancellationToken, onlyLocal);
-        }
-
-        /// <summary>
-        /// PostJsonAsync
-        /// </summary>
-        /// <returns></returns>
-        public Task<List<ReturnT<T>>> PostJsonAsync<T>(RequestContext param, CancellationToken cancellationToken = default, bool onlyLocal = false)
-        {
-            return InnerPostJsonAsync<ReturnT<T>>(param, cancellationToken, onlyLocal);
         }
     }
 }
