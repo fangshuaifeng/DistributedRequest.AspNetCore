@@ -1,5 +1,4 @@
-﻿using Consul;
-using DistributedRequest.AspNetCore.Extensions;
+﻿using DistributedRequest.AspNetCore.Extensions;
 using DistributedRequest.AspNetCore.Interfaces;
 using DistributedRequest.AspNetCore.Models;
 using Microsoft.AspNetCore.Http;
@@ -25,43 +24,24 @@ namespace DistributedRequest.AspNetCore.Providers
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IClientHandler _clientHandler;
+        private readonly IServiceDiscovery _serviceDiscovery;
 
         public DistributedRequestProvider(
             IOptions<DistributedRequestOption> namedOptionsAccessor
             , IHttpContextAccessor _httpContextAccessor
             , IHttpClientFactory _httpClientFactory
             , IClientHandler _clientHandler
+            , IServiceDiscovery _serviceDiscovery
             )
         {
             this._clientHandler = _clientHandler;
             this._option = namedOptionsAccessor.Value;
             this._httpContextAccessor = _httpContextAccessor;
             this._httpClientFactory = _httpClientFactory;
+            this._serviceDiscovery = _serviceDiscovery;
         }
 
         #region 内部方法
-
-        /// <summary>
-        /// 获取当前服务所有服务器地址
-        /// </summary>
-        /// <returns></returns>
-        private async Task<List<string>> GetServiceUrls(string serviceName)
-        {
-            using ConsulClient consulClient = new ConsulClient(c => { c.Address = new System.Uri(_option.Host); });
-            var rst = await consulClient.Agent.Services();
-            return rst?.Response.Where(w => w.Value.Service == serviceName && w.Value.Address != "127.0.0.1" && w.Value.Address != "localhost")
-                                .Select(s => $"http://{s.Value.Address}:{s.Value.Port}").ToList() ?? new List<string>();
-        }
-
-        /// <summary>
-        /// 获取Token
-        /// </summary>
-        /// <returns></returns>
-        private AuthenticationHeaderValue GetCurrentToken()
-        {
-            AuthenticationHeaderValue.TryParse(_httpContextAccessor.HttpContext.Request.GetAuthToken(), out var _authentication);
-            return _authentication;
-        }
 
         /// <summary>
         /// 发起网络请求
@@ -96,19 +76,7 @@ namespace DistributedRequest.AspNetCore.Providers
         public async Task<List<TResopnse>> PostJsonAsync<TResopnse>(IJobRequest<TResopnse> request, CancellationToken cancellationToken = default, int? partitionCount = null, bool onlyLocal = false) where TResopnse : class
         {
             var strParams = request == null ? string.Empty : JsonConvert.SerializeObject(request);
-            var ips = new List<string>();
-            if (!onlyLocal)
-            {
-                ips.AddRange(await GetServiceUrls(_option.ServiceName));
-                if (ips.Count == 0) return new List<TResopnse>();
-
-                if (partitionCount.HasValue && partitionCount < ips.Count && partitionCount > 0)
-                {
-                    // 随机取
-                    ips = ips.OrderBy(o => Guid.NewGuid()).Take(partitionCount.Value).ToList();
-                }
-            }
-            else
+            if (onlyLocal)
             {
                 var oneRst = await _clientHandler.HandlerAsync<TResopnse>(new InnerContext
                 {
@@ -120,8 +88,18 @@ namespace DistributedRequest.AspNetCore.Providers
                 return new List<TResopnse> { oneRst };
             }
 
+            var ips = await _serviceDiscovery.GetServiceUrls();
+            if (ips.Count == 0) return new List<TResopnse>();
+
+            if (partitionCount.HasValue && partitionCount < ips.Count && partitionCount > 0)
+            {
+                ips = ips.OrderBy(o => Guid.NewGuid()).Take(partitionCount.Value).ToList(); // 随机策略
+            }
+
             var count = ips.Count;
-            var token = GetCurrentToken();
+            var token = _httpContextAccessor.HttpContext?.Request.GetAuthToken();
+            var cookie = _httpContextAccessor.HttpContext?.Request.GetCookie();
+
             var tasks = ips.Select((server_address, idx) => SendAsync<TResopnse>($"{server_address}/{_option.BasePath}"
                                                                                 , new InnerContext
                                                                                 {
@@ -131,7 +109,11 @@ namespace DistributedRequest.AspNetCore.Providers
                                                                                     TResponse = typeof(TResopnse).FullName
                                                                                 }
                                                                                 , cancellationToken
-                                                                                , e => { e.Authorization = token; }));
+                                                                                , e =>
+                                                                                {
+                                                                                    e.Authorization = token;
+                                                                                    if (cookie != null) e.Add("Cookie", cookie);
+                                                                                }));
 
             var reponses = await Task.WhenAll(tasks);
             return reponses.ToList();

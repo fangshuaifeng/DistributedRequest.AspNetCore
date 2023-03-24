@@ -9,9 +9,9 @@ namespace DistributedRequest.AspNetCore.Handlers
 {
     internal class DistributedRequestClientHandler : IClientHandler
     {
-        private readonly GlobalTypeList _typeList;
+        private readonly ServiceTypeList _typeList;
         private readonly IServiceProvider _serviceProvider;
-        public DistributedRequestClientHandler(GlobalTypeList _typeList, IServiceProvider _serviceProvider)
+        public DistributedRequestClientHandler(ServiceTypeList _typeList, IServiceProvider _serviceProvider)
         {
             this._typeList = _typeList;
             this._serviceProvider = _serviceProvider;

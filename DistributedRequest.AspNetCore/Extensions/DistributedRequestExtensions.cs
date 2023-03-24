@@ -14,6 +14,7 @@ using DistributedRequest.AspNetCore.Providers;
 using System.Data;
 using System.Collections.Generic;
 using System;
+using DistributedRequest.AspNetCore.Interfaces.Services;
 
 namespace DistributedRequest.AspNetCore.Extensions
 {
@@ -31,46 +32,9 @@ namespace DistributedRequest.AspNetCore.Extensions
             services.Configure<DistributedRequestOption>(configuration);
             services.AddSingleton<IClientHandler, DistributedRequestClientHandler>();
             services.AddSingleton<IDistributedRequest, DistributedRequestProvider>();
+            services.AddSingleton<IServiceDiscovery, ConsulServiceDiscovery>();
 
-            MutipleInjectService(services, assemblies);
-        }
-
-        private static List<TypeInfo> GetCustomeTypes(List<TypeInfo> allTypes, Type openGenericType)
-        {
-            return (from x in allTypes
-                    from z in x.GetInterfaces()
-                    let y = x.BaseType
-                    where (y != null && y.IsGenericType && openGenericType.IsAssignableFrom(y.GetGenericTypeDefinition()))
-                          || (z.IsGenericType && openGenericType.IsAssignableFrom(z.GetGenericTypeDefinition()))
-                    select x).ToList();
-        }
-
-        /// <summary>
-        /// 批量注入服务
-        /// </summary>
-        private static void MutipleInjectService(IServiceCollection services, Assembly[] assemblies)
-        {
-            var allTypes = assemblies?.SelectMany(s => s.DefinedTypes).Where(x => x.IsClass && !x.IsAbstract).ToList();
-            var types = new GlobalTypeList();
-
-            ////批量注入任务
-            foreach (var type in GetCustomeTypes(allTypes, typeof(IJobRequestHandler<,>)))
-            {
-                foreach (var item in type.ImplementedInterfaces)
-                {
-                    services.AddScoped(item, type);
-                }
-                //types.AddTypes(Enums.TypeEnum.Job, type);
-            }
-            // 批量注入参和出参类
-            foreach (var type in GetCustomeTypes(allTypes, typeof(IJobRequest<>)))
-            {
-                var defTypes = type.GetInterfaces().Where(w => w.GetGenericTypeDefinition() == typeof(IJobRequest<>)).SelectMany(i => i.GetGenericArguments()).ToArray();
-                types.AddTypes(Enums.TypeEnum.Response, defTypes);
-                types.AddTypes(Enums.TypeEnum.Request, type);
-            }
-
-            services.AddSingleton(types);
+            MutipleInjectService(services, (assemblies != null && assemblies.Length > 0) ? assemblies : new Assembly[] { Assembly.GetEntryAssembly() });
         }
 
         /// <summary>
@@ -90,6 +54,45 @@ namespace DistributedRequest.AspNetCore.Extensions
                 var rst = await mediator.HandlerAsync(jobContext, context.RequestAborted);
                 await context.Response.WriteAsync(rst, context.RequestAborted);
             }).WithDisplayName("DR-Client");
+        }
+
+
+        private static List<TypeInfo> GetCustomeTypes(List<TypeInfo> allTypes, Type openGenericType)
+        {
+            return (from x in allTypes
+                    from z in x.GetInterfaces()
+                    let y = x.BaseType
+                    where (y != null && y.IsGenericType && openGenericType.IsAssignableFrom(y.GetGenericTypeDefinition()))
+                          || (z.IsGenericType && openGenericType.IsAssignableFrom(z.GetGenericTypeDefinition()))
+                    select x).ToList();
+        }
+
+        /// <summary>
+        /// 批量注入服务
+        /// </summary>
+        private static void MutipleInjectService(IServiceCollection services, params Assembly[] assemblies)
+        {
+            var allTypes = assemblies?.SelectMany(s => s.DefinedTypes).Where(x => x.IsClass && !x.IsAbstract).ToList();
+            var types = new ServiceTypeList();
+
+            ////批量注入任务
+            foreach (var type in GetCustomeTypes(allTypes, typeof(IJobRequestHandler<,>)))
+            {
+                foreach (var item in type.ImplementedInterfaces)
+                {
+                    services.AddScoped(item, type);
+                }
+                //types.AddTypes(Enums.TypeEnum.Job, type);
+            }
+            // 批量注入参和出参类
+            foreach (var type in GetCustomeTypes(allTypes, typeof(IJobRequest<>)))
+            {
+                var defTypes = type.GetInterfaces().Where(w => w.GetGenericTypeDefinition() == typeof(IJobRequest<>)).SelectMany(i => i.GetGenericArguments()).ToArray();
+                types.AddTypes(Enums.TypeEnum.Response, defTypes);
+                types.AddTypes(Enums.TypeEnum.Request, type);
+            }
+
+            services.AddSingleton(types);
         }
     }
 }

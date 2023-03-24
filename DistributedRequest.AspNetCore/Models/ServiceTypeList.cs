@@ -1,19 +1,16 @@
 ﻿using DistributedRequest.AspNetCore.Enums;
-using DistributedRequest.AspNetCore.Interfaces;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace DistributedRequest.AspNetCore.Models
 {
-    internal class GlobalTypeList
+    internal class ServiceTypeList
     {
         private readonly ConcurrentDictionary<string, Type> jobTypes = new ConcurrentDictionary<string, Type>();
         private readonly ConcurrentDictionary<string, Type> requestTypes = new ConcurrentDictionary<string, Type>();
         private readonly ConcurrentDictionary<string, Type> responseTypes = new ConcurrentDictionary<string, Type>();
 
-        public GlobalTypeList()
+        public ServiceTypeList()
         {
         }
 
