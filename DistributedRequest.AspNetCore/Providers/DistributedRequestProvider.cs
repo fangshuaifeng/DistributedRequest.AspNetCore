@@ -1,20 +1,18 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.Net.Http.Headers;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
-using System.Threading;
-using Consul;
-using Newtonsoft.Json;
-using DistributedRequest.AspNetCore.Models;
-using System.Linq;
+﻿using Consul;
 using DistributedRequest.AspNetCore.Extensions;
 using DistributedRequest.AspNetCore.Interfaces;
-using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Hosting.Server.Features;
+using DistributedRequest.AspNetCore.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DistributedRequest.AspNetCore.Providers
 {
@@ -26,16 +24,16 @@ namespace DistributedRequest.AspNetCore.Providers
         private readonly DistributedRequestOption _option;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IHttpClientFactory _httpClientFactory;
-        private readonly IServer _server;
+        private readonly IClientHandler _clientHandler;
 
         public DistributedRequestProvider(
             IOptions<DistributedRequestOption> namedOptionsAccessor
             , IHttpContextAccessor _httpContextAccessor
             , IHttpClientFactory _httpClientFactory
-            , IServer _server
+            , IClientHandler _clientHandler
             )
         {
-            this._server = _server;
+            this._clientHandler = _clientHandler;
             this._option = namedOptionsAccessor.Value;
             this._httpContextAccessor = _httpContextAccessor;
             this._httpClientFactory = _httpClientFactory;
@@ -97,27 +95,33 @@ namespace DistributedRequest.AspNetCore.Providers
 
         public async Task<List<TResopnse>> PostJsonAsync<TResopnse>(IJobRequest<TResopnse> request, CancellationToken cancellationToken = default, int? partitionCount = null, bool onlyLocal = false) where TResopnse : class
         {
-            var token = GetCurrentToken();
+            var strParams = request == null ? string.Empty : JsonConvert.SerializeObject(request);
             var ips = new List<string>();
             if (!onlyLocal)
             {
                 ips.AddRange(await GetServiceUrls(_option.ServiceName));
+                if (ips.Count == 0) return new List<TResopnse>();
+
+                if (partitionCount.HasValue && partitionCount < ips.Count && partitionCount > 0)
+                {
+                    // 随机取
+                    ips = ips.OrderBy(o => Guid.NewGuid()).Take(partitionCount.Value).ToList();
+                }
             }
             else
             {
-                var localAddress = _server.Features.Get<IServerAddressesFeature>().Addresses.First();
-                ips.Add(localAddress);
+                var oneRst = await _clientHandler.HandlerAsync<TResopnse>(new InnerContext
+                {
+                    Parameter = strParams,
+                    BroadCast = new BroadCastModel(0, 1),
+                    TRequest = request.GetType().FullName,
+                    TResponse = typeof(TResopnse).FullName
+                }, cancellationToken);
+                return new List<TResopnse> { oneRst };
             }
-
-            if (partitionCount.HasValue && partitionCount < ips.Count && partitionCount > 0)
-            {
-                // 随机取
-                ips = ips.OrderBy(o => Guid.NewGuid()).Take(partitionCount.Value).ToList();
-            }
-            if (ips.Count == 0) return new List<TResopnse>();
 
             var count = ips.Count;
-            var strParams = request == null ? string.Empty : JsonConvert.SerializeObject(request);
+            var token = GetCurrentToken();
             var tasks = ips.Select((server_address, idx) => SendAsync<TResopnse>($"{server_address}/{_option.BasePath}"
                                                                                 , new InnerContext
                                                                                 {

@@ -27,7 +27,7 @@ namespace DistributedRequest.AspNetCore.Handlers
 
         public override async Task<object> Handle(object request, BroadCastModel broadCast, IServiceProvider serviceProvider, CancellationToken cancellationToken)
         {
-            return await Handle((IJobRequest<TResponse>)request, broadCast, serviceProvider, cancellationToken).ConfigureAwait(false);
+            return await Handle((IJobRequest<TResponse>)request, broadCast, serviceProvider, cancellationToken);//.ConfigureAwait(false);
         }
     }
 }

@@ -29,8 +29,8 @@ namespace DistributedRequest.AspNetCore.Extensions
         {
             services.AddHttpClient();
             services.Configure<DistributedRequestOption>(configuration);
-            services.AddSingleton<DistributedRequestClientHandler>();
-            services.AddScoped<IDistributedRequest, DistributedRequestProvider>();
+            services.AddSingleton<IClientHandler, DistributedRequestClientHandler>();
+            services.AddSingleton<IDistributedRequest, DistributedRequestProvider>();
 
             MutipleInjectService(services, assemblies);
         }
@@ -79,14 +79,14 @@ namespace DistributedRequest.AspNetCore.Extensions
         /// <param name="endpoints"></param>
         public static void MapDistributedRequest(this IEndpointRouteBuilder endpoints)
         {
-            var basePath = endpoints.ServiceProvider.GetRequiredService<IOptions<DistributedRequestOption>>().Value.BasePath ?? "dr";
+            var basePath = endpoints.ServiceProvider.GetRequiredService<IOptions<DistributedRequestOption>>().Value.BasePath ?? "dr-client";
             endpoints.MapPost($"{basePath}", async context =>
             {
                 var jobContext = JsonSerializer.DeserializeAsync<InnerContext>(context.Request.Body, new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
                 }, context.RequestAborted).Result;
-                var mediator = context.RequestServices.GetRequiredService<DistributedRequestClientHandler>();
+                var mediator = context.RequestServices.GetRequiredService<IClientHandler>();
                 var rst = await mediator.HandlerAsync(jobContext, context.RequestAborted);
                 await context.Response.WriteAsync(rst, context.RequestAborted);
             }).WithDisplayName("DR-Client");
