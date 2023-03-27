@@ -3,7 +3,8 @@
   "ServiceRegisterConfig": {
     "Host": "http://10.222.12.28:8500/", // Consul地址
     "ServiceName": "zlw-report",
-    "AddressBlackList":["127.0.0.1"] //服务地址黑名单
+    "AddressBlackList":["127.0.0.1"] //服务地址黑名单，会过滤掉黑名单中的地址
+    "AddressWhiteList":["127.0.0.1"] //服务地址白名单，会过滤掉非白名单的地址
   },
 ```
 

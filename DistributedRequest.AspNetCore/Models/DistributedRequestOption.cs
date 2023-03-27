@@ -20,5 +20,9 @@ namespace DistributedRequest.AspNetCore.Models
         /// 服务地址黑名单
         /// </summary>
         public List<string> AddressBlackList { get; set; } = new List<string>();
+        /// <summary>
+        /// 服务地址白名单，配置了白名单后会仅启用白名单地址
+        /// </summary>
+        public List<string> AddressWhiteList { get; set; } = new List<string>();
     }
 }
