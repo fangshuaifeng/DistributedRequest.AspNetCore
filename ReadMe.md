@@ -2,7 +2,8 @@
 ```json
   "ServiceRegisterConfig": {
     "Host": "http://10.222.12.28:8500/", // Consul地址
-    "ServiceName": "zlw_report"
+    "ServiceName": "zlw-report",
+    "AddressBlackList":["127.0.0.1"] //服务地址黑名单
   },
 ```
 

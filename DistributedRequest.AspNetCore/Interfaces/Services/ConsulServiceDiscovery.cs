@@ -16,6 +16,7 @@ namespace DistributedRequest.AspNetCore.Interfaces.Services
         public ConsulServiceDiscovery(IOptions<DistributedRequestOption> namedOptionsAccessor)
         {
             this._option = namedOptionsAccessor.Value;
+            if (_option.AddressBlackList != null && _option.AddressBlackList.Count > 0) skipAddresses.AddRange(_option.AddressBlackList);
         }
 
         public async Task<List<string>> GetServiceUrls(string serviceName)
