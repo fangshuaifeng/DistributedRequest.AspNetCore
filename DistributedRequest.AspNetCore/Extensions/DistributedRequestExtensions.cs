@@ -30,8 +30,8 @@ namespace DistributedRequest.AspNetCore.Extensions
         {
             services.AddHttpClient();
             services.Configure<DistributedRequestOption>(configuration);
-            services.AddSingleton<IClientHandler, DistributedRequestClientHandler>();
-            services.AddSingleton<IDistributedRequest, DistributedRequestProvider>();
+            services.AddScoped<IClientHandler, DistributedRequestClientHandler>();
+            services.AddScoped<IDistributedRequest, DistributedRequestProvider>();
             services.AddSingleton<IServiceDiscovery, ConsulServiceDiscovery>();
 
             MutipleInjectService(services, (assemblies != null && assemblies.Length > 0) ? assemblies : new Assembly[] { Assembly.GetEntryAssembly() });
