@@ -76,7 +76,8 @@ namespace DistributedRequest.AspNetCore.Providers
         public async Task<List<TResopnse>> PostJsonAsync<TResopnse>(IJobRequest<TResopnse> request, CancellationToken cancellationToken = default, int? partitionCount = null, bool onlyLocal = false) where TResopnse : class
         {
             var strParams = request == null ? string.Empty : JsonConvert.SerializeObject(request);
-            if (onlyLocal || partitionCount == 1)
+            var ips = new List<string>();
+            if (onlyLocal || partitionCount == 1 || (ips = await _serviceDiscovery.GetServiceUrls()).Count == 0)
             {
                 var oneRst = await _clientHandler.HandlerAsync<TResopnse>(new InnerContext
                 {
@@ -87,9 +88,6 @@ namespace DistributedRequest.AspNetCore.Providers
                 }, cancellationToken);
                 return new List<TResopnse> { oneRst };
             }
-
-            var ips = await _serviceDiscovery.GetServiceUrls();
-            if (ips.Count == 0) return new List<TResopnse>();
 
             if (partitionCount.HasValue && partitionCount < ips.Count && partitionCount > 0)
             {
